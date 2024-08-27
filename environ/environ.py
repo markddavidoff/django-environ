@@ -971,8 +971,8 @@ class Env:
         :return: None
         """
         if overwrite:
-            return envval.update({k: str(v)}
-        return envval.setdefault(k, str(v)
+            return envval.update({key: str(value)})
+        return envval.setdefault(key, str(value))
 
 
 class FileAwareEnv(Env):
