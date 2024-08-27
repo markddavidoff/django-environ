@@ -1,6 +1,6 @@
 # This file is part of the django-environ.
 #
-# Copyright (c) 2021-2023, Serghei Iakovlev <egrep@protonmail.ch>
+# Copyright (c) 2021-2022, Serghei Iakovlev <egrep@protonmail.ch>
 # Copyright (c) 2013-2021, Daniele Faraglia <daniele.faraglia@gmail.com>
 #
 # For the full copyright and license information, please view
@@ -862,8 +862,8 @@ class Env:
         return config
 
     @classmethod
-    def read_env(cls, env_file=None, overwrite=False, parse_comments=False,
-                 encoding='utf8', **overrides):
+    def read_env(cls, env_file=None, overwrite=False, encoding='utf8',
+                 **overrides):
         r"""Read a .env file into os.environ.
 
         If not given a path to a dotenv path, does filthy magic stack
@@ -883,8 +883,6 @@ class Env:
             the Django settings module from the Django project root.
         :param overwrite: ``overwrite=True`` will force an overwrite of
             existing environment variables.
-        :param parse_comments: Determines whether to recognize and ignore
-           inline comments in the .env file. Default is False.
         :param encoding: The encoding to use when reading the environment file.
         :param \**overrides: Any additional keyword arguments provided directly
             to read_env will be added to the environment. If the key matches an
@@ -929,40 +927,22 @@ class Env:
         for line in content.splitlines():
             m1 = re.match(r'\A(?:export )?([A-Za-z_0-9]+)=(.*)\Z', line)
             if m1:
-
-                # Example:
-                #
-                # line: KEY_499=abc#def
-                # key:  KEY_499
-                # val:  abc#def
                 key, val = m1.group(1), m1.group(2)
-
-                if not parse_comments:
-                    # Default behavior
-                    #
-                    # Look for value in single quotes
-                    m2 = re.match(r"\A'(.*)'\Z", val)
-                    if m2:
-                        val = m2.group(1)
+                # Look for value in quotes, ignore post-# comments
+                # (outside quotes)
+                m2 = re.match(r"\A\s*'(?<!\\)(.*)'\s*(#.*\s*)?\Z", val)
+                if m2:
+                    val = m2.group(1)
                 else:
-                    # Ignore post-# comments (outside quotes).
-                    # Something like ['val'  # comment] becomes ['val'].
-                    m2 = re.match(r"\A\s*'(?<!\\)(.*)'\s*(#.*\s*)?\Z", val)
-                    if m2:
-                        val = m2.group(1)
-                    else:
-                        # For no quotes, find value, ignore comments
-                        # after the first #
-                        m2a = re.match(r"\A(.*?)(#.*\s*)?\Z", val)
-                        if m2a:
-                            val = m2a.group(1)
-
-                # Look for value in double quotes
+                    # For no quotes, find value, ignore comments
+                    # after the first #
+                    m2a = re.match(r"\A(.*?)(#.*\s*)?\Z", val)
+                    if m2a:
+                        val = m2a.group(1)
                 m3 = re.match(r'\A"(.*)"\Z', val)
                 if m3:
                     val = re.sub(r'\\(.)', _keep_escaped_format_characters,
                                  m3.group(1))
-
                 overrides[key] = str(val)
             elif not line or line.startswith('#'):
                 # ignore warnings for empty line-breaks or comments
@@ -970,19 +950,29 @@ class Env:
             else:
                 logger.warning('Invalid line: %s', line)
 
-        def set_environ(envval):
-            """Return lambda to set environ.
-
-             Use setdefault unless overwrite is specified.
-             """
-            if overwrite:
-                return lambda k, v: envval.update({k: str(v)})
-            return lambda k, v: envval.setdefault(k, str(v))
-
-        setenv = set_environ(cls.ENVIRON)
-
         for key, value in overrides.items():
-            setenv(key, value)
+            self.set_environ(envval=cls.ENVIRON, key=key, value=value, overwrite=overwrite)
+
+    @staticmethod
+    def set_environ(envval, key, value, overwrite):
+        """
+        set a the value for a key on envval
+        Use setdefault unless overwrite is specified.
+        :param envval:
+            dict of environment var data, such as an os.environ refrerence
+        :param str key:
+            enrionment var name
+        :param str value:
+            environment var value
+        :param bool overwrite:
+            default False
+            if true, overwrites existing environment variable values
+            if false, only sets evironment variable if not already set
+        :return: None
+        """
+        if overwrite:
+            return envval.update({k: str(v)}
+        return envval.setdefault(k, str(v)
 
 
 class FileAwareEnv(Env):
