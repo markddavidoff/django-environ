@@ -950,19 +950,29 @@ class Env:
             else:
                 logger.warning('Invalid line: %s', line)
 
-        def set_environ(envval):
-            """Return lambda to set environ.
-
-             Use setdefault unless overwrite is specified.
-             """
-            if overwrite:
-                return lambda k, v: envval.update({k: str(v)})
-            return lambda k, v: envval.setdefault(k, str(v))
-
-        setenv = set_environ(cls.ENVIRON)
-
         for key, value in overrides.items():
-            setenv(key, value)
+            self.set_environ(envval=cls.ENVIRON, key=key, value=value, overwrite=overwrite)
+
+    @staticmethod
+    def set_environ(envval, key, value, overwrite):
+        """
+        set a the value for a key on envval
+        Use setdefault unless overwrite is specified.
+        :param envval:
+            dict of environment var data, such as an os.environ refrerence
+        :param str key:
+            enrionment var name
+        :param str value:
+            environment var value
+        :param bool overwrite:
+            default False
+            if true, overwrites existing environment variable values
+            if false, only sets evironment variable if not already set
+        :return: None
+        """
+        if overwrite:
+            return envval.update({k: str(v)}
+        return envval.setdefault(k, str(v)
 
 
 class FileAwareEnv(Env):
